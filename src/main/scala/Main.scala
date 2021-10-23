@@ -172,7 +172,12 @@ object MyModule {
   }
   case class Some[+A](get: A) extends Option[A]
   case object None extends Option[Nothing]
+
   def lift[A, B](f: A => B): Option[A] => Option[B] = _ map f
+
+  def map2[A, B, C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] = {
+    a flatMap (cc => b map (dd => f(cc, dd)))
+  }
 
   def main(args: Array[String]): Unit = {
     println("-" * 50)
@@ -185,7 +190,10 @@ object MyModule {
     val curried = curry(compare)
     val oemore = curried(32)
     val res = Some(45).map((x) => x * 2)
-
+    val op1 = Some(10)
+    val op2 = Some(20)
+    println(map2(op1, op2)((a, b) => a * b))
+    println(Some(12).flatMap((a => Some(a * 7))))
     val abs0: Option[Double] => Option[Double] = lift(math.abs)
     println(abs0(Some(-12)))
     val x = List(1, 2, 3, 4, 5) match {
