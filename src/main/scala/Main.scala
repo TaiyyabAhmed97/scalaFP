@@ -64,7 +64,7 @@ object MyModule {
   def compose[A, B, C](f: B => C, g: A => B): (A, B) => C = { (a: A, b: B) =>
     f(g(a))
   }
-
+  /*
   sealed trait List[+A]
   case object Nil extends List[Nothing]
   case class Cons[+A](head: A, tail: List[A]) extends List[A]
@@ -141,6 +141,7 @@ object MyModule {
       foldLeft(ns, List[A]())((acc, h) => Cons(h, acc))
     }
   }
+   */
 
   trait Option[+A] {
     def map[B](f: A => B): Option[B] = this match {
@@ -179,12 +180,49 @@ object MyModule {
     a flatMap (cc => b map (dd => f(cc, dd)))
   }
 
+  def traverse[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] = a match {
+    case Nil        => Some(Nil)
+    case head :: tl => map2(f(head), traverse(tl)(f))(_ :: _)
+  }
+
+  def sequence[A](a: List[Option[A]]): Option[List[A]] = a match {
+    case Nil          => Some(Nil)
+    case head :: tail => head flatMap ((cc => sequence(tail) map (cc :: _)))
+  }
+
+  sealed trait Either[+E, +A] {
+    def map[B](f: A => B): Either[E, B] = this match {
+      case Left(value)  => Left(value)
+      case Right(value) => Right(f(value))
+    }
+
+    def flatMap[EE >: E, B](f: A => Either[EE, B]): Either[EE, B] = this match {
+      case Left(value)  => Left(value)
+      case Right(value) => f(value)
+    }
+    def orElse[EE >: E, B >: A](b: => Either[EE, B]): Either[EE, B] =
+      this match {
+        case Left(_)  => b
+        case Right(a) => Right(a)
+      }
+    def map2[EE >: E, B, C](b: Either[EE, B])(f: (A, B) => C): Either[EE, C] = {
+      for { a <- this; b1 <- b } yield f(a, b1)
+    }
+  }
+  case class Left[+E](value: E) extends Either[E, Nothing]
+  case class Right[+A](value: A) extends Either[Nothing, A]
+
+  def mean(xs: IndexedSeq[Double]): Either[String, Double] = {
+    if (xs.isEmpty)
+      Left("empty list")
+    else
+      Right(xs.sum / xs.length)
+  }
+
   def main(args: Array[String]): Unit = {
     println("-" * 50)
-    val abeer = List(4, 5, 6)
+    val ibrahim: Int = 10
     val shoppingCart = 0
-    println(abeer)
-    println(Cons(List(1, 2, 3), List(4)))
     val ints = Array(1, 2, 3, 4, 5, 3, 7, 8, 9, 10)
     val compare = (x: Int, y: Int) => if (x < y) true else false
     val curried = curry(compare)
@@ -192,19 +230,15 @@ object MyModule {
     val res = Some(45).map((x) => x * 2)
     val op1 = Some(10)
     val op2 = Some(20)
+    val ops = List(Some(1), Some(2), Some(3))
+    val doubles = IndexedSeq(1.0, 2.0, 3.0)
+    println(mean(IndexedSeq()))
+    println(traverse(ops)((a) => Some(a.getOrElse(1) * 2)))
+    println(sequence(ops))
     println(map2(op1, op2)((a, b) => a * b))
     println(Some(12).flatMap((a => Some(a * 7))))
     val abs0: Option[Double] => Option[Double] = lift(math.abs)
     println(abs0(Some(-12)))
-    val x = List(1, 2, 3, 4, 5) match {
-      case Cons(x, Cons(2, Cons(4, _)))          => x
-      case Nil                                   => 42
-      case Cons(x, Cons(y, Cons(3, Cons(4, _)))) => x + y
-      case Cons(h, t)                            => h + List.sum(t)
-      case _                                     => 101
-    }
-    val list = List(1, 2, 3, 4, 5)
-    println(List.reverse(list))
     println("-" * 50)
   }
 }
